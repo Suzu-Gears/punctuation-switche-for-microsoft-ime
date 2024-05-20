@@ -122,7 +122,6 @@ SwitchConfig() {
         RegWrite, REG_DWORD, %regRootKey%, %regSubKey%, %regValue%, %KUTEN_TOUTEN_num%
         CurrentMode := "KUTEN_TOUTEN"
     }
-
 }
 
 SetIcon() {
