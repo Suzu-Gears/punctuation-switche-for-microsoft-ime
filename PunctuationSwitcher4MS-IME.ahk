@@ -15,13 +15,14 @@ EnvGet, AppDataPath, Appdata ; 環境変数からAppDataを取得
 ; Microsoft IMEのレジストリのパス
 global regRootKey := "HKEY_CURRENT_USER"
 global regSubKey := "Software\Microsoft\IME\15.0\IMEJP\MSIME"
-global regValue := "option1"
+global regName := "option1"
 
 global CurrentMode
 global KUTEN_TOUTEN_num := "1376768"
 global COMMA_PERIOD_num := "1311232"
 
 global isRunning := false ; 切替処理の実行中を示すフラグ
+global isLaunchedByIcon := false ; タスクトレイアイコンのクリックから実行されていることを示すフラグ IMEのタスクキルによる再起動時にコマンドプロンプトのウィンドウを最小化状態で実行することで、フォーカスのリセットを行うかどうかの判定に使用
 
 ; スクリプト起動時に現在のモードに合わせてアイコンを設定(ConfigTextとCurrentModeに現在の状態が入る)
 SetInitialIcon()
@@ -71,8 +72,9 @@ AHK_NOTIFYICON(wParam, lParam, msg, hwnd) {
     ; msgとhwndはv1からv2への変換時にエラーが出ないように入れる
     ; WM_LBUTTONUP or WM_LBUTTONDBLCLK
     if (lParam = 0x201 || lParam = 0x203) {
-        TogglePunctuation()
-        return
+        isLaunchedByIcon := true
+        SwitchPunctuation()
+        isLaunchedByIcon := false
     }
 }
 
@@ -82,20 +84,22 @@ SetInitialIcon() {
     SetIcon()
 }
 
-TogglePunctuation() {
-    if (isRunning) { ; TogglePunctuation()が実行中に再度呼び出されたら切替処理を行わない
+SwitchPunctuation() {
+    if (isRunning) { ; SwitchPunctuation()が実行中に再度呼び出されたら切替処理を行わない
         return
     }
     isRunning := true
     GetCurrentMode()
     SwitchConfig()
+    GetCurrentMode()
     SetIcon()
+    ToggleFocus()
     isRunning := false
 }
 
 GetCurrentMode() {
     ; 現在の句読点の設定を読み取る
-    RegRead, now_option1, %regRootKey%, %regSubKey%, %regValue%
+    RegRead, now_option1, %regRootKey%, %regSubKey%, %regName%
     if (ErrorLevel) {
         MsgBox, 16, エラー, レジストリの読み込みに失敗しました。`nアプリケーションを終了します。
         ExitApp
@@ -105,27 +109,39 @@ GetCurrentMode() {
         CurrentMode := "KUTEN_TOUTEN"
     } else if (now_option1 = COMMA_PERIOD_num) {
         CurrentMode := "COMMA_PERIOD"
+    } else {
+        CurrentMode := "unknown"
+    }
+}
+
+ChangeTo(regValue) {
+    RegWrite, REG_DWORD, %regRootKey%, %regSubKey%, %regName%, %regValue%
+}
+
+ToggleFocus() {
+    if (!isLaunchedByIcon) {
+        ; ショートカットキーによる実行時は、レジストリ書き換え後にテキスト入力欄からフォーカスが外れずレジストリ内容が句読点に反映されないため、一瞬ウィンドウを表示することでフォーカスを強制OFF/ONして再読み込み ←たまに失敗する
+        ; ショートカットキー長押しによる連続実行時に、最低でも0.5秒の間隔を確保する意味もある
+        RunWait, %ComSpec% /c timeout /nobreak 0.5, , Min
     }
 }
 
 SwitchConfig() {
     if (CurrentMode = "KUTEN_TOUTEN") {
-        ; 現在の設定の句点読点をカンマピリオドに置換して新しい設定文字列に格納
-        RegWrite, REG_DWORD, %regRootKey%, %regSubKey%, %regValue%, %COMMA_PERIOD_num%
-        CurrentMode := "COMMA_PERIOD"
+        ChangeTo(COMMA_PERIOD_num)
     } else if (CurrentMode = "COMMA_PERIOD") {
-        ; 現在の設定のカンマピリオドを句点読点に置換して新しい設定文字列に格納
-        RegWrite, REG_DWORD, %regRootKey%, %regSubKey%, %regValue%, %KUTEN_TOUTEN_num%
-        CurrentMode := "KUTEN_TOUTEN"
+        ChangeTo(KUTEN_TOUTEN_num)
     } else {
-        ; 現在の設定が判定できない場合、句点読点をカンマピリオドに置換して新しい設定文字列に格納
-        RegWrite, REG_DWORD, %regRootKey%, %regSubKey%, %regValue%, %KUTEN_TOUTEN_num%
-        CurrentMode := "KUTEN_TOUTEN"
+        ; 現在の設定が判定できない場合は句点読点に設定
+        MsgBox, 現在の設定が判定できませんでした。「、。」に設定します。
+        ChangeTo(KUTEN_TOUTEN_num)
     }
 }
 
 SetIcon() {
-    Menu, Tray, Icon, % "icons\" . CurrentMode . ".ico"
+    if (CurrentMode = "KUTEN_TOUTEN" || CurrentMode = "COMMA_PERIOD") {
+        Menu, Tray, Icon, % "icons\" . CurrentMode . ".ico"
+    }
 }
 ; -----句読点切替の処理ここまで-----
 
@@ -214,7 +230,7 @@ GuiControlGetFocus(whichGUI:=1) {
 }
 
 VariableHotkey:
-    TogglePunctuation()
+    SwitchPunctuation()
 return
 ; -----可変ショートカットキーの処理ここまで-----
 
@@ -222,6 +238,6 @@ return
     ; CtrlとShiftが同時に押された場合に句読点切り替えを実行
     ~Control & ~Shift::
     ~Shift & ~Control::
-        TogglePunctuation()
+        SwitchPunctuation()
     return
 #If
