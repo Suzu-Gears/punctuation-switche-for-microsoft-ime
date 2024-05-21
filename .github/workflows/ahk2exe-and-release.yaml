@@ -1,0 +1,50 @@
+name: Ahk2Exe and Release for PunctuationSwitcher4MS-IME
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  Ahk2Exe-and-Release:
+    name: Ahk2Exe and Release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Ahk2Exe
+        uses: nekocodeX/GitHub-Action-Ahk2Exe@main
+        with:
+          in: PunctuationSwitcher4MS-IME.ahk
+          icon: icons/app.ico
+
+      - name: Collect tag information
+        id: tag-info
+        shell: powershell
+        run: Write-Output ('::set-output name=tag-name::' + ('${{github.ref}}' -replace 'refs/tags/', ''))
+
+      - name: Prepare release assets
+        run: |
+          mkdir release
+          cp PunctuationSwitcher4MS-IME.exe release/
+          mkdir release/icons
+          cp icons/COMMA_PERIOD.ico release/icons/
+          cp icons/KUTEN_TOUTEN.ico release/icons/
+          cp Readme.txt release/
+          cd release
+          powershell Compress-Archive -Path * -DestinationPath ../PunctuationSwitcher4MS-IME-${{steps.tag-info.outputs.tag-name}}.zip
+          cd ..
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{steps.tag-info.outputs.tag-name}}
+          name: Release ${{steps.tag-info.outputs.tag-name}}
+          body: 'Auto-generated release'
+          files: PunctuationSwitcher4MS-IME-${{steps.tag-info.outputs.tag-name}}.zip
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
