@@ -17,6 +17,7 @@ jobs:
         uses: nekocodeX/GitHub-Action-Ahk2Exe@main
         with:
           in: PunctuationSwitcher4MS-IME.ahk
+          out: PunctuationSwitcher.exe
           icon: icons/app.ico
 
       - name: Collect tag information
@@ -27,7 +28,7 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir release
-          cp PunctuationSwitcher4MS-IME.exe release/
+          cp PunctuationSwitcher.exe release/
           mkdir release/icons
           cp icons/COMMA_PERIOD.ico release/icons/
           cp icons/KUTEN_TOUTEN.ico release/icons/
