@@ -38,14 +38,12 @@ jobs:
           cd ..
 
       - name: Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{steps.tag-info.outputs.tag-name}}
-          name: Release ${{steps.tag-info.outputs.tag-name}}
-          body: "Auto-generated release"
-          files: PunctuationSwitcher4MS-IME-${{steps.tag-info.outputs.tag-name}}.zip
-          draft: false
-          prerelease: false
-          fail_on_unmatched_files: true
+        run: |
+          gh release create ${{steps.tag-info.outputs.tag-name}} `
+            --title "Release ${{steps.tag-info.outputs.tag-name}}" `
+            --notes "Auto-generated release" `
+            --draft=false `
+            --prerelease=false `
+            ./PunctuationSwitcher4MS-IME-${{steps.tag-info.outputs.tag-name}}.zip
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
