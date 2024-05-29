@@ -3,7 +3,7 @@ name: Ahk2Exe and Release for PunctuationSwitcher4MS-IME
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   Ahk2Exe-and-Release:
@@ -42,7 +42,7 @@ jobs:
         with:
           tag_name: ${{steps.tag-info.outputs.tag-name}}
           name: Release ${{steps.tag-info.outputs.tag-name}}
-          body: 'Auto-generated release'
+          body: "Auto-generated release"
           files: PunctuationSwitcher4MS-IME-${{steps.tag-info.outputs.tag-name}}.zip
           draft: false
           prerelease: false
