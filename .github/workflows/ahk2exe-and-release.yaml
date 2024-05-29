@@ -23,7 +23,9 @@ jobs:
       - name: Collect tag information
         id: tag-info
         shell: powershell
-        run: Write-Output ('::set-output name=tag-name::' + ('${{github.ref}}' -replace 'refs/tags/', ''))
+        run: |
+          $tagName = "${{github.ref}}" -replace 'refs/tags/', ''
+          "tag-name=$tagName" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Prepare release assets
         run: |
@@ -34,16 +36,16 @@ jobs:
           cp icons/KUTEN_TOUTEN.ico release/icons/
           cp Readme.txt release/
           cd release
-          powershell Compress-Archive -Path * -DestinationPath ../PunctuationSwitcher4MS-IME-${{steps.tag-info.outputs.tag-name}}.zip
+          powershell Compress-Archive -Path * -DestinationPath ../PunctuationSwitcher4MS-IME-${{ env.tag-name }}.zip
           cd ..
 
       - name: Release
         run: |
-          gh release create ${{steps.tag-info.outputs.tag-name}} `
-            --title "Release ${{steps.tag-info.outputs.tag-name}}" `
+          gh release create ${{ env.tag-name }} `
+            --title "Release ${{ env.tag-name }}" `
             --notes "Auto-generated release" `
             --draft=false `
             --prerelease=false `
-            ./PunctuationSwitcher4MS-IME-${{steps.tag-info.outputs.tag-name}}.zip
+            ./PunctuationSwitcher4MS-IME-${{ env.tag-name }}.zip
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
